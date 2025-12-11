@@ -3,26 +3,29 @@
 // -------------------------------
 const API_URL = "https://attendance-backend-6tmr.onrender.com/api";
 
-// Helper: display messages in registration result box
+// Helper: display messages
 function info(msg) {
   const box = document.getElementById("regResult");
   if (box) box.textContent = msg;
 }
 
-// Helper: fetch a binary file (QR code) and trigger download
+// Helper: Auto download QR code
 async function fetchAndDownload(url, filename) {
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Failed to fetch QR image: ${res.status}`);
+
     const blob = await res.blob();
-    const tmpUrl = URL.createObjectURL(blob);
+    const tempUrl = URL.createObjectURL(blob);
+
     const a = document.createElement("a");
-    a.href = tmpUrl;
+    a.href = tempUrl;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(tmpUrl);
+
+    URL.revokeObjectURL(tempUrl);
   } catch (err) {
     console.warn("QR download failed:", err);
   }
@@ -32,6 +35,7 @@ async function fetchAndDownload(url, filename) {
 // REGISTER STUDENT
 // -------------------------------
 const regForm = document.getElementById("regForm");
+
 if (regForm) {
   regForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -43,7 +47,7 @@ if (regForm) {
     const photo = document.getElementById("photo").files[0];
 
     if (!name || !username || !email || !matric_number || !photo) {
-      return alert("All fields + photo are required.");
+      return alert("All fields including photo are required.");
     }
 
     const form = new FormData();
@@ -63,7 +67,8 @@ if (regForm) {
 
       let data;
       const text = await res.text();
-      try { data = JSON.parse(text); } catch { data = { ok: false, error: text || 'Non-JSON response' }; }
+      try { data = JSON.parse(text); } 
+      catch { data = { ok: false, error: text }; }
 
       if (!res.ok || !data.ok) {
         alert("Registration failed: " + (data.error || `HTTP ${res.status}`));
@@ -73,23 +78,20 @@ if (regForm) {
 
       const student = data.student;
 
-      // Populate UI
+      // Show profile
       document.getElementById("student-panel").style.display = "block";
       document.getElementById("profile-name").textContent = student.name;
       document.getElementById("profile-matric").textContent = student.matric_number;
       document.getElementById("profile-email").textContent = student.email;
-      document.getElementById("profile-photo").src = student.photo_url || '';
-      document.getElementById("profile-qr").src = student.qr_code_url || '';
+      document.getElementById("profile-photo").src = student.photo_url;
+      document.getElementById("profile-qr").src = student.qr_code_url;
 
-      const dl = document.getElementById("btn-download-qr");
+      // Auto download QR
       if (student.qr_code_url) {
-        dl.href = student.qr_code_url;
-        dl.download = (student.name || 'student') + "_QR.png";
-        dl.style.display = "inline-block";
-        await fetchAndDownload(student.qr_code_url, dl.download);
-      } else dl.style.display = "none";
+        await fetchAndDownload(student.qr_code_url, `${student.name}_QR.png`);
+      }
 
-      info("Registration complete!");
+      info("Registration Complete!");
       regForm.reset();
 
     } catch (err) {
@@ -100,7 +102,7 @@ if (regForm) {
 }
 
 // -------------------------------
-// SCANNER WITH BACK CAMERA PRIORITY
+// SCANNER — ALWAYS USE BACK CAMERA FIRST
 // -------------------------------
 let html5QrCode = null;
 let running = false;
@@ -115,64 +117,69 @@ document.getElementById("startScanner")?.addEventListener("click", async () => {
       return;
     }
 
-    html5QrCode = new Html5QrCode("reader");
+    html5QrCode = new Html5Qrcode("reader");
 
     // Get all cameras
     const cameras = await Html5Qrcode.getCameras();
-    if (!cameras.length) return alert("No camera found");
+    if (!cameras.length) return alert("No camera found.");
 
-    // Select back camera if available
-    let backCam =
-      cameras.find(cam => cam.label.toLowerCase().includes("back")) ||
-      cameras[cameras.length - 1]; // fallback (last camera)
+    // Try to detect back camera
+    let backCamera =
+      cameras.find(cam =>
+        cam.label.toLowerCase().includes("back") ||
+        cam.label.toLowerCase().includes("rear") ||
+        cam.label.toLowerCase().includes("environment") ||
+        cam.label.toLowerCase().includes("wide")
+      ) || cameras[cameras.length - 1]; // fallback
 
-    console.log("Selected Camera:", backCam);
+    console.log("🎥 Selected Camera:", backCamera);
 
+    // Start scanning
     await html5QrCode.start(
-      backCam.id,
+      backCamera.id,
       { fps: 10, qrbox: 250 },
-      async (text) => {
+      async (decodedText) => {
         try {
           let payload;
-          try { payload = JSON.parse(text); } catch { throw new Error("QR payload is not JSON"); }
+          try { payload = JSON.parse(decodedText); }
+          catch { throw new Error("Invalid QR format"); }
+
           const id = payload?.id;
-          if (!id) throw new Error("QR missing id");
+          if (!id) throw new Error("QR missing ID");
 
           if (scannedThisSession.has(id)) {
             document.getElementById("scanResult").textContent =
-              `Already recorded for id ${id} (this session).`;
+              `Already scanned this session.`;
             return;
           }
           scannedThisSession.add(id);
 
-          // fetch student
+          // Fetch student
           const stuRes = await fetch(`${API_URL}/student/${id}`);
-          if (!stuRes.ok) throw new Error(await stuRes.text() || "Student lookup failed");
+          if (!stuRes.ok) throw new Error("Student lookup failed");
           const stuData = await stuRes.json();
-          if (!stuData.ok) throw new Error(stuData.error || "Student not found");
+          if (!stuData.ok) throw new Error(stuData.error);
 
-          // mark attendance
-          const attendanceRes = await fetch(`${API_URL}/attendance`, {
+          // Mark attendance
+          const attRes = await fetch(`${API_URL}/attendance`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               student_id: id,
-              lecturer: document.getElementById("lecturer").value || "Unknown",
-              course: document.getElementById("course").value || "Unknown"
+              lecturer: document.getElementById("lecturer").value,
+              course: document.getElementById("course").value
             })
           });
 
-          const attData = await attendanceRes.json();
-          if (!attData.ok) throw new Error(attData.error || "Attendance failed");
+          const attData = await attRes.json();
+          if (!attData.ok) throw new Error(attData.error);
 
           document.getElementById("scanResult").textContent =
             `Attendance recorded for ${stuData.student.name}`;
+
         } catch (err) {
           document.getElementById("scanResult").textContent = "Error: " + err.message;
         }
-      },
-      (err) => {
-        // optional error logging
       }
     );
 
