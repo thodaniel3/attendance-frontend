@@ -100,7 +100,7 @@ if (regForm) {
 }
 
 // -------------------------------
-// SCANNER
+// SCANNER WITH BACK CAMERA PRIORITY
 // -------------------------------
 let html5QrCode = null;
 let running = false;
@@ -115,12 +115,21 @@ document.getElementById("startScanner")?.addEventListener("click", async () => {
       return;
     }
 
-    html5QrCode = new Html5Qrcode("reader");
-    const cams = await Html5Qrcode.getCameras();
-    if (!cams.length) return alert("No camera found");
+    html5QrCode = new Html5QrCode("reader");
+
+    // Get all cameras
+    const cameras = await Html5Qrcode.getCameras();
+    if (!cameras.length) return alert("No camera found");
+
+    // Select back camera if available
+    let backCam =
+      cameras.find(cam => cam.label.toLowerCase().includes("back")) ||
+      cameras[cameras.length - 1]; // fallback (last camera)
+
+    console.log("Selected Camera:", backCam);
 
     await html5QrCode.start(
-      cams[0].id,
+      backCam.id,
       { fps: 10, qrbox: 250 },
       async (text) => {
         try {
@@ -130,7 +139,8 @@ document.getElementById("startScanner")?.addEventListener("click", async () => {
           if (!id) throw new Error("QR missing id");
 
           if (scannedThisSession.has(id)) {
-            document.getElementById("scanResult").textContent = `Already recorded for id ${id} (this session).`;
+            document.getElementById("scanResult").textContent =
+              `Already recorded for id ${id} (this session).`;
             return;
           }
           scannedThisSession.add(id);
@@ -155,13 +165,14 @@ document.getElementById("startScanner")?.addEventListener("click", async () => {
           const attData = await attendanceRes.json();
           if (!attData.ok) throw new Error(attData.error || "Attendance failed");
 
-          document.getElementById("scanResult").textContent = `Attendance recorded for ${stuData.student.name}`;
+          document.getElementById("scanResult").textContent =
+            `Attendance recorded for ${stuData.student.name}`;
         } catch (err) {
           document.getElementById("scanResult").textContent = "Error: " + err.message;
         }
       },
       (err) => {
-        // optional QR parse errors
+        // optional error logging
       }
     );
 
