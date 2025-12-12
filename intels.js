@@ -1,16 +1,21 @@
-// -------------------------------
+// intels.js
 // CONFIG
-// -------------------------------
 const API_URL = "https://attendance-backend-6tmr.onrender.com/api";
-const FRONTEND_BASE = "https://attendance-app-rho-rose.vercel.app"; // your frontend URL
+const FRONTEND_BASE = "https://attendance-app-rho-rose.vercel.app"; // keep in sync with Render env
 
-// Helper: display messages
+// UI helpers
 function info(msg) {
   const box = document.getElementById("regResult");
   if (box) box.textContent = msg;
 }
+function setScanResult(msg, ok = true) {
+  const box = document.getElementById('scanResult');
+  if (!box) return;
+  box.style.color = ok ? '#a8f0b1' : '#ff9a9a';
+  box.textContent = msg;
+}
 
-// Helper: Auto download QR code (unchanged)
+// Auto download helper
 async function fetchAndDownload(url, filename) {
   try {
     const res = await fetch(url);
@@ -30,95 +35,63 @@ async function fetchAndDownload(url, filename) {
 }
 
 // -------------------------------
-// REGISTER STUDENT (unchanged, still works)
+// Registration
 // -------------------------------
-const regForm = document.getElementById("regForm");
+document.getElementById('regForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.querySelector('[name="name"]').value.trim();
+  const username = document.querySelector('[name="username"]').value.trim();
+  const email = document.querySelector('[name="email"]').value.trim();
+  const matric_number = document.querySelector('[name="matric_number"]').value.trim();
+  const photo = document.getElementById("photo").files[0];
 
-if (regForm) {
-  regForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  if (!name || !username || !email || !matric_number || !photo) return alert("All fields required");
 
-    const name = document.querySelector('[name="name"]').value.trim();
-    const username = document.querySelector('[name="username"]').value.trim();
-    const email = document.querySelector('[name="email"]').value.trim();
-    const matric_number = document.querySelector('[name="matric_number"]').value.trim();
-    const photo = document.getElementById("photo").files[0];
+  const form = new FormData();
+  form.append("name", name);
+  form.append("username", username);
+  form.append("email", email);
+  form.append("matric_number", matric_number);
+  form.append("photo", photo);
 
-    if (!name || !username || !email || !matric_number || !photo) {
-      return alert("All fields including photo are required.");
+  info("Sending registration...");
+  try {
+    const res = await fetch(`${API_URL}/student`, { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok || !data.ok) { alert("Failed: " + (data.error || res.status)); info("Failed"); return; }
+
+    const student = data.student;
+    document.getElementById("student-panel").style.display = "block";
+    document.getElementById("profile-name").textContent = student.name;
+    document.getElementById("profile-matric").textContent = student.matric_number;
+    document.getElementById("profile-email").textContent = student.email;
+    document.getElementById("profile-photo").src = student.photo_url || '';
+    document.getElementById("profile-qr").src = student.qr_code_url || '';
+
+    if (student.qr_code_url) {
+      await fetchAndDownload(student.qr_code_url, `${student.name}_QR.png`);
     }
-
-    const form = new FormData();
-    form.append("name", name);
-    form.append("username", username);
-    form.append("email", email);
-    form.append("matric_number", matric_number);
-    form.append("photo", photo);
-
-    info("Sending registration...");
-
-    try {
-      const res = await fetch(`${API_URL}/student`, {
-        method: "POST",
-        body: form,
-      });
-
-      const text = await res.text();
-      let data;
-      try { data = JSON.parse(text); } catch { data = { ok: false, error: text }; }
-
-      if (!res.ok || !data.ok) {
-        alert("Registration failed: " + (data.error || `HTTP ${res.status}`));
-        info("Registration failed.");
-        return;
-      }
-
-      const student = data.student;
-
-      // Show profile
-      document.getElementById("student-panel").style.display = "block";
-      document.getElementById("profile-name").textContent = student.name;
-      document.getElementById("profile-matric").textContent = student.matric_number;
-      document.getElementById("profile-email").textContent = student.email;
-      document.getElementById("profile-photo").src = student.photo_url || '';
-      document.getElementById("profile-qr").src = student.qr_code_url || '';
-
-      // Auto download QR image (if present)
-      if (student.qr_code_url) {
-        await fetchAndDownload(student.qr_code_url, `${student.name}_QR.png`);
-      }
-
-      info("Registration Complete!");
-      regForm.reset();
-
-    } catch (err) {
-      alert("Registration error: " + err.message);
-      info("Registration error");
-    }
-  });
-}
+    info("Registration Complete!");
+    e.target.reset();
+  } catch (err) {
+    alert("Registration error: " + err.message);
+    info("Error");
+  }
+});
 
 // -------------------------------
-// SCAN VIA URL (for third-party scanner opens /scan?id=...)
+// Attendance helpers (shared)
 // -------------------------------
-
-// Helper: read query param
 function getQueryParam(name) {
-  const url = new URL(window.location.href);
-  return url.searchParams.get(name);
+  try { return new URL(window.location.href).searchParams.get(name); } catch { return null; }
 }
-
-// Helper: check saved PIN (remember for day)
 function getSavedPin() {
   try {
     const pin = localStorage.getItem('lecturer_pin');
     const date = localStorage.getItem('lecturer_pin_date');
     if (!pin || !date) return null;
-    const today = new Date().toISOString().slice(0,10);
-    return date === today ? pin : null;
-  } catch {
-    return null;
-  }
+    return date === new Date().toISOString().slice(0,10) ? pin : null;
+  } catch { return null; }
 }
 function savePinForToday(pin) {
   try {
@@ -139,26 +112,42 @@ async function postAttendance(studentId, lecturerName, courseCode, pin) {
         admin_pin: pin
       })
     });
-    const data = await res.json();
-    return data;
+    return await res.json();
   } catch (err) {
     return { ok: false, error: err.message };
   }
 }
 
-// Build a tiny UI overlay when visit /scan?id=...
-function createScanUi(studentId) {
-  // hide main page content so lecturer sees scan UI clearly
-  document.body.style.filter = 'blur(2px)'; // subtle hint; will restore below
+// parse scanned QR value: may be a full URL containing ?id=... or the id itself
+function extractStudentIdFromScanned(text) {
+  try {
+    const u = new URL(text);
+    const id = u.searchParams.get('id') || u.searchParams.get('student_id') || null;
+    if (id) return id;
+    // maybe url path like /scan/<id>
+    const parts = u.pathname.split('/').filter(Boolean);
+    if (parts.length && parts[parts.length-1].length >= 8) return parts[parts.length-1];
+    return null;
+  } catch (e) {
+    // not a URL — maybe it's just the id
+    if (typeof text === 'string' && text.trim().length > 5) return text.trim();
+    return null;
+  }
+}
+
+// UI overlay used when scan triggers (same UI used by scan?id=... flow)
+async function showConfirmAndPost(studentId) {
+  // build overlay
+  document.body.style.filter = 'blur(2px)';
   const overlay = document.createElement('div');
   overlay.id = 'scan-overlay';
   overlay.style.position = 'fixed';
-  overlay.style.left = '0';
-  overlay.style.top = '0';
-  overlay.style.right = '0';
-  overlay.style.bottom = '0';
+  overlay.style.left = 0;
+  overlay.style.top = 0;
+  overlay.style.right = 0;
+  overlay.style.bottom = 0;
   overlay.style.background = 'rgba(0,0,0,0.85)';
-  overlay.style.zIndex = '9999';
+  overlay.style.zIndex = 9999;
   overlay.style.display = 'flex';
   overlay.style.alignItems = 'center';
   overlay.style.justifyContent = 'center';
@@ -182,68 +171,140 @@ function createScanUi(studentId) {
   `;
   document.body.appendChild(overlay);
 
-  // If saved pin exists, auto-fill and submit
   const savedPin = getSavedPin();
   if (savedPin) {
     document.getElementById('scan-pin').value = savedPin;
     document.getElementById('scan-remember').checked = true;
-    // optionally auto-fill lecturer name from localStorage (if stored)
     const lecturerName = localStorage.getItem('lecturer_name') || '';
     if (lecturerName) document.getElementById('scan-lecturer').value = lecturerName;
-    // auto submit after short delay
-    setTimeout(() => document.getElementById('scan-submit').click(), 700);
+    setTimeout(() => document.getElementById('scan-submit').click(), 600);
   }
 
   document.getElementById('scan-cancel').addEventListener('click', () => {
-    document.getElementById('scan-overlay')?.remove();
+    overlay.remove();
     document.body.style.filter = '';
   });
 
   document.getElementById('scan-submit').addEventListener('click', async () => {
     const pin = document.getElementById('scan-pin').value.trim();
-    const lecturerName = document.getElementById('scan-lecturer').value.trim();
-    const courseCode = document.getElementById('scan-course').value.trim();
+    const lecturer = document.getElementById('scan-lecturer').value.trim();
+    const course = document.getElementById('scan-course').value.trim();
     const remember = document.getElementById('scan-remember').checked;
     const resultBox = document.getElementById('scan-result');
 
-    if (!pin) {
-      resultBox.textContent = 'Please enter PIN.';
-      return;
-    }
-
+    if (!pin) { resultBox.textContent = 'Please enter PIN.'; return; }
     resultBox.textContent = 'Submitting attendance...';
 
-    // attempt to post attendance
-    const res = await postAttendance(studentId, lecturerName, courseCode, pin);
+    const res = await postAttendance(studentId, lecturer, course, pin);
     if (res.ok) {
-      resultBox.textContent = '✅ Attendance recorded. Thank you.';
-      // remember pin/lecturer if requested
+      resultBox.textContent = '✅ Attendance recorded.';
       if (remember) {
         savePinForToday(pin);
-        if (lecturerName) localStorage.setItem('lecturer_name', lecturerName);
+        if (lecturer) localStorage.setItem('lecturer_name', lecturer);
       } else {
-        // if not remember, clear any stored name
         localStorage.removeItem('lecturer_name');
       }
-      // small delay then close overlay
-      setTimeout(() => {
-        document.getElementById('scan-overlay')?.remove();
-        document.body.style.filter = '';
-      }, 900);
+      setTimeout(() => { overlay.remove(); document.body.style.filter = ''; }, 900);
     } else {
       resultBox.textContent = 'Error: ' + (res.error || 'Failed to record attendance.');
     }
   });
 }
 
-// On load: if url contains id param, show scan UI and attempt auto-submit if pin saved
+// If page loaded with scan?id=... show overlay
 window.addEventListener('DOMContentLoaded', () => {
-  const studentId = getQueryParam('id');
-  if (studentId) {
-    createScanUi(studentId);
-  }
+  const studentIdFromUrl = getQueryParam('id');
+  if (studentIdFromUrl) showConfirmAndPost(studentIdFromUrl);
 });
 
 // -------------------------------
-// (Optional) Keep your in-page scanner too (unchanged) if you want — not required anymore
+// Built-in scanner (html5-qrcode)
 // -------------------------------
+let html5QrScanner = null;
+let scanning = false;
+
+const startBtn = document.getElementById('startScanner');
+const stopBtn = document.getElementById('stopScanner');
+
+function startScanner() {
+  if (scanning) return;
+  const reader = document.getElementById('reader');
+  reader.innerHTML = ''; // clear
+  html5QrScanner = new Html5Qrcode(/* element id */ "reader");
+  Html5Qrcode.getCameras().then(cameras => {
+    if (!cameras || cameras.length === 0) {
+      setScanResult('No camera found on this device', false);
+      return;
+    }
+    // pick the back camera if available
+    const backCamera = cameras.find(c => /back|rear|environment/i.test(c.label)) || cameras[0];
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+    html5QrScanner.start(
+      { deviceId: { exact: backCamera.id } },
+      config,
+      onScanSuccess,
+      onScanFailure
+    ).then(() => {
+      scanning = true;
+      startBtn.style.display = 'none';
+      stopBtn.style.display = 'inline-block';
+      setScanResult('Scanner started. Point camera at student QR.');
+    }).catch(err => {
+      setScanResult('Could not start camera: ' + String(err), false);
+    });
+  }).catch(err => {
+    setScanResult('Error getting cameras: ' + String(err), false);
+  });
+}
+
+function stopScanner() {
+  if (!scanning || !html5QrScanner) return;
+  html5QrScanner.stop().then(() => {
+    html5QrScanner.clear();
+    scanning = false;
+    startBtn.style.display = 'inline-block';
+    stopBtn.style.display = 'none';
+    setScanResult('Scanner stopped');
+  }).catch(err => {
+    setScanResult('Failed to stop scanner: ' + String(err), false);
+  });
+}
+
+function onScanSuccess(decodedText, decodedResult) {
+  // Avoid rapid multiple detections
+  stopScanner();
+
+  const studentId = extractStudentIdFromScanned(decodedText);
+  if (!studentId) {
+    setScanResult('Scanned value doesn\'t contain a valid student id', false);
+    // restart
+    setTimeout(() => startScanner(), 900);
+    return;
+  }
+
+  setScanResult('Scanned Student ID: ' + studentId);
+  // Prompt and post using same overlay
+  showConfirmAndPost(studentId);
+}
+
+function onScanFailure(error) {
+  // ignore frequent errors
+  // console.log('scan fail', error);
+}
+
+// hook buttons
+startBtn?.addEventListener('click', startScanner);
+stopBtn?.addEventListener('click', stopScanner);
+
+// Paste URL open
+document.getElementById('openUrl')?.addEventListener('click', () => {
+  const url = document.getElementById('pasteUrl').value.trim();
+  if (!url) return alert('Paste the scan URL from the QR first');
+  try {
+    // open in same page (will render overlay)
+    window.location.href = url;
+  } catch (e) {
+    alert('Invalid URL');
+  }
+});
