@@ -213,6 +213,9 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(urlId) showConfirmAndPost(urlId);
 });
 
+
+
+
 // -------------------------------
 // Built-in scanner
 //let html5QrScanner=null,scanning=false;
@@ -225,7 +228,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   //const cam=cameras[0];
 //  html5QrScanner.start({deviceId:{exact:cam.id}},{fps:10,qrbox:{width:250,height:250}},text=>{ 
  //   html5QrScanner.stop(); 
-    const id=(new URL(text,new URL(window.location.href)).searchParams.get('id')||text);
+   // const id=(new URL(text,new URL(window.location.href)).searchParams.get('id')||text);
     //showConfirmAndPost(id);
   //},err=>{});
   //scanning=true; document.getElementById('startScanner').style.display='none';
@@ -238,6 +241,9 @@ window.addEventListener('DOMContentLoaded',()=>{
 //});
 //
 // Open scan URL manually
+
+
+
 
 
 
