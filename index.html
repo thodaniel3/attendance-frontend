@@ -2,54 +2,32 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Attendance App</title>
+<title>Attendance Management System</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
-<!-- html5-qrcode for built-in scanning -->
+<!-- html5-qrcode for scanning -->
 <script src="https://unpkg.com/html5-qrcode@2.3.9/minified/html5-qrcode.min.js"></script>
 
 <style>
-body { font-family: Arial,sans-serif; background:#000; color:#f5f5f5; margin:0; padding:0; }
-h1,h2,h3 { text-align:center; margin-top:20px; color:#d4af37; font-weight:bold; }
-.container { max-width:900px; margin:0 auto; padding:20px; }
-section { background:#111; padding:20px; border-radius:10px; margin-bottom:25px; border:1px solid #333; box-shadow:0 0 10px rgba(212,175,55,0.15); }
-input,button,select { width:100%; padding:12px; margin-top:10px; margin-bottom:10px; border-radius:6px; border:none; font-size:16px; }
-input { background:#222; color:#ddd; border:1px solid #444; }
-button { background:#5c3a23; color:white; cursor:pointer; font-weight:bold; transition:0.3s ease; }
-button:hover { background:#7a4d2d; }
-#student-panel img,#profile-photo,#profile-qr { border-radius:10px; margin-top:10px; border:2px solid #333; }
-#regResult,#scanResult { margin-top:12px; padding:10px; background:#222; border-radius:6px; border:1px solid #333; }
-.scan-area { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; }
-#reader { width:320px; max-width:100%; background:#000; border-radius:8px; padding:6px; border:1px solid #333; }
-.scanner-controls { flex:1; min-width:220px; }
-.small { font-size:13px; color:#ccc; }
-
-/* Clean overlay for attendance confirmation */
-#scan-overlay {
-  position: fixed;
-  left: 0;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.85);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 15px;
-}
-#scan-overlay .overlay-card {
-  max-width:420px;
-  width:100%;
-  background:#111;
-  padding:18px;
-  border-radius:10px;
-  border:1px solid #333;
-  color:#fff;
-}
-#scan-overlay input { background:#222; color:#ddd; border:1px solid #444; padding:10px; margin-top:8px; border-radius:6px; width:100%; }
-#scan-overlay button { flex:1; padding:10px; border-radius:6px; border:none; margin-top:10px; }
-#scan-overlay .button-row { display:flex; gap:8px; }
+body{font-family:Arial,sans-serif;background:#000;color:#f5f5f5;margin:0;padding:0}
+h1,h2,h3{text-align:center;margin-top:20px;color:#d4af37;font-weight:bold}
+.container{max-width:900px;margin:0 auto;padding:20px}
+section{background:#111;padding:20px;border-radius:10px;margin-bottom:25px;border:1px solid #333;box-shadow:0 0 10px rgba(212,175,55,0.15)}
+input,button,select{width:100%;padding:12px;margin-top:10px;margin-bottom:10px;border-radius:6px;border:none;font-size:16px}
+input{background:#222;color:#ddd;border:1px solid #444}
+button{background:#5c3a23;color:white;cursor:pointer;font-weight:bold;transition:0.3s ease}
+button:hover{background:#7a4d2d}
+#reader{width:320px;max-width:100%;background:#000;border-radius:8px;padding:6px;border:1px solid #333}
+#scan-overlay{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:15px}
+#scan-overlay .overlay-card{max-width:420px;width:100%;background:#111;padding:18px;border-radius:10px;border:1px solid #333;color:#fff}
+#scan-overlay input{background:#222;color:#ddd;border:1px solid #444;padding:10px;margin-top:8px;border-radius:6px;width:100%}
+#scan-overlay button{flex:1;padding:10px;border-radius:6px;border:none;margin-top:10px}
+#scan-overlay .button-row{display:flex;gap:8px}
+#regResult,#scanResult{margin-top:12px;padding:10px;background:#222;border-radius:6px;border:1px solid #333}
+#student-panel img,#profile-photo,#profile-qr{border-radius:10px;margin-top:10px;border:2px solid #333}
+.scan-area{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.scanner-controls{flex:1;min-width:220px}
+.small{font-size:13px;color:#ccc}
 </style>
 </head>
 <body>
@@ -57,7 +35,7 @@ button:hover { background:#7a4d2d; }
 <h1>Attendance Management System</h1>
 <div class="container">
 
-  <!-- Registration -->
+  <!-- Student Registration -->
   <section id="register">
     <h2>Student Registration</h2>
     <form id="regForm" enctype="multipart/form-data">
@@ -83,9 +61,9 @@ button:hover { background:#7a4d2d; }
     </div>
   </section>
 
-  <!-- Scanner section -->
+  <!-- Built-in Scanner -->
   <section id="scanner">
-    <h2>Lecturer Scanner (Built-in)</h2>
+    <h2>Lecturer Scanner</h2>
     <div class="scan-area">
       <div id="reader"></div>
       <div class="scanner-controls">
@@ -95,7 +73,7 @@ button:hover { background:#7a4d2d; }
         <div id="scanResult"></div>
         <hr/>
         <p class="small">Or paste a Scan URL (from QR) here:</p>
-        <input id="pasteUrl" placeholder="https://.../scan?id=..." />
+        <input id="pasteUrl" placeholder="https://.../scan?id=...">
         <button id="openUrl">Open Scan URL</button>
       </div>
     </div>
@@ -110,7 +88,6 @@ const API_URL = "https://attendance-backend-6tmr.onrender.com/api";
 // UI helpers
 function info(msg) { const box = document.getElementById("regResult"); if (box) box.textContent = msg; }
 function setScanResult(msg, ok = true) { const box = document.getElementById('scanResult'); if (!box) return; box.style.color = ok?'#a8f0b1':'#ff9a9a'; box.textContent = msg; }
-
 async function fetchAndDownload(url, filename) {
   try {
     const res = await fetch(url);
@@ -137,7 +114,12 @@ document.getElementById('regForm')?.addEventListener('submit', async (e) => {
   const matric_number = document.querySelector('[name="matric_number"]').value.trim();
   const photo = document.getElementById("photo").files[0];
   if (!name || !username || !email || !matric_number || !photo) return alert("All fields required");
-  const form = new FormData(); form.append("name", name); form.append("username", username); form.append("email", email); form.append("matric_number", matric_number); form.append("photo", photo);
+  const form = new FormData(); 
+  form.append("name", name); 
+  form.append("username", username); 
+  form.append("email", email); 
+  form.append("matric_number", matric_number); 
+  form.append("photo", photo);
   info("Sending registration...");
   try {
     const res = await fetch(`${API_URL}/student`, { method: "POST", body: form });
@@ -181,7 +163,7 @@ function extractStudentIdFromScanned(text){
 }
 
 // -------------------------------
-// Show clean overlay for attendance
+// Attendance overlay
 async function showConfirmAndPost(studentId){
   const overlay = document.createElement('div');
   overlay.id='scan-overlay';
@@ -204,7 +186,6 @@ async function showConfirmAndPost(studentId){
   `;
   document.body.appendChild(overlay);
 
-  // Auto-fill saved values
   const savedPin=getSavedPin(); if(savedPin){ document.getElementById('scan-pin').value=savedPin; document.getElementById('scan-remember').checked=true; }
   const savedLecturer=localStorage.getItem('lecturer_name')||''; if(savedLecturer) document.getElementById('scan-lecturer').value=savedLecturer;
 
@@ -254,8 +235,8 @@ function onScanSuccess(decodedText){ stopScanner(); const studentId=extractStude
 
 startBtn?.addEventListener('click',startScanner);
 stopBtn?.addEventListener('click',stopScanner);
-
 document.getElementById('openUrl')?.addEventListener('click',()=>{ const url=document.getElementById('pasteUrl').value.trim(); if(!url) return alert('Paste URL'); try{ window.location.href=url; }catch(e){ alert('Invalid URL'); } });
+
 </script>
 </body>
 </html>

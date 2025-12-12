@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Attendance App</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<!-- html5-qrcode for built-in scanning -->
+<script src="https://unpkg.com/html5-qrcode@2.3.9/minified/html5-qrcode.min.js"></script>
+
+<style>
+body { font-family: Arial,sans-serif; background:#000; color:#f5f5f5; margin:0; padding:0; }
+h1,h2,h3 { text-align:center; margin-top:20px; color:#d4af37; font-weight:bold; }
+.container { max-width:900px; margin:0 auto; padding:20px; }
+section { background:#111; padding:20px; border-radius:10px; margin-bottom:25px; border:1px solid #333; box-shadow:0 0 10px rgba(212,175,55,0.15); }
+input,button,select { width:100%; padding:12px; margin-top:10px; margin-bottom:10px; border-radius:6px; border:none; font-size:16px; }
+input { background:#222; color:#ddd; border:1px solid #444; }
+button { background:#5c3a23; color:white; cursor:pointer; font-weight:bold; transition:0.3s ease; }
+button:hover { background:#7a4d2d; }
+#student-panel img,#profile-photo,#profile-qr { border-radius:10px; margin-top:10px; border:2px solid #333; }
+#regResult,#scanResult { margin-top:12px; padding:10px; background:#222; border-radius:6px; border:1px solid #333; }
+.scan-area { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+#reader { width:320px; max-width:100%; background:#000; border-radius:8px; padding:6px; border:1px solid #333; }
+.scanner-controls { flex:1; min-width:220px; }
+.small { font-size:13px; color:#ccc; }
+
+/* Clean overlay for attendance confirmation */
+#scan-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+}
+#scan-overlay .overlay-card {
+  max-width:420px;
+  width:100%;
+  background:#111;
+  padding:18px;
+  border-radius:10px;
+  border:1px solid #333;
+  color:#fff;
+}
+#scan-overlay input { background:#222; color:#ddd; border:1px solid #444; padding:10px; margin-top:8px; border-radius:6px; width:100%; }
+#scan-overlay button { flex:1; padding:10px; border-radius:6px; border:none; margin-top:10px; }
+#scan-overlay .button-row { display:flex; gap:8px; }
+</style>
+</head>
+<body>
+
+<h1>Attendance Management System</h1>
+<div class="container">
+
+  <!-- Registration -->
+  <section id="register">
+    <h2>Student Registration</h2>
+    <form id="regForm" enctype="multipart/form-data">
+      <input name="name" placeholder="Full Name" required>
+      <input name="username" placeholder="Username" required>
+      <input name="email" type="email" placeholder="Email" required>
+      <input name="matric_number" placeholder="Matric Number" required>
+      <label>Upload Passport Photograph:</label>
+      <input id="photo" name="photo" type="file" accept="image/*" required>
+      <button type="submit">Register & Download QR</button>
+    </form>
+    <div id="regResult"></div>
+
+    <div id="student-panel" style="display:none;">
+      <h3>Student Profile</h3>
+      <img id="profile-photo" style="max-width:150px;">
+      <div>Name: <span id="profile-name"></span></div>
+      <div>Matric: <span id="profile-matric"></span></div>
+      <div>Email: <span id="profile-email"></span></div>
+      <h3>QR Code</h3>
+      <img id="profile-qr" style="max-width:200px;">
+      <p class="small">The QR contains a link that opens the Scan page. Lecturers can use an external QR app or the built-in scanner.</p>
+    </div>
+  </section>
+
+  <!-- Scanner section -->
+  <section id="scanner">
+    <h2>Lecturer Scanner (Built-in)</h2>
+    <div class="scan-area">
+      <div id="reader"></div>
+      <div class="scanner-controls">
+        <p class="small">Click <strong>Start Scanner</strong> to use the device camera. When a student's QR is detected the app will extract the student id and prompt for the lecturer PIN to mark attendance.</p>
+        <button id="startScanner">Start Scanner</button>
+        <button id="stopScanner" style="display:none;background:#444">Stop Scanner</button>
+        <div id="scanResult"></div>
+        <hr/>
+        <p class="small">Or paste a Scan URL (from QR) here:</p>
+        <input id="pasteUrl" placeholder="https://.../scan?id=..." />
+        <button id="openUrl">Open Scan URL</button>
+      </div>
+    </div>
+  </section>    
+
+</div>
+
+<script>
+const API_URL = "https://attendance-backend-6tmr.onrender.com/api";
+
+// -------------------------------
+// UI helpers
+function info(msg) { const box = document.getElementById("regResult"); if (box) box.textContent = msg; }
+function setScanResult(msg, ok = true) { const box = document.getElementById('scanResult'); if (!box) return; box.style.color = ok?'#a8f0b1':'#ff9a9a'; box.textContent = msg; }
+
+async function fetchAndDownload(url, filename) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch QR image: ${res.status}`);
+    const blob = await res.blob();
+    const tempUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = tempUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(tempUrl);
+  } catch (err) { console.warn("QR download failed:", err); }
+}
+
+// -------------------------------
+// Registration
+document.getElementById('regForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.querySelector('[name="name"]').value.trim();
+  const username = document.querySelector('[name="username"]').value.trim();
+  const email = document.querySelector('[name="email"]').value.trim();
+  const matric_number = document.querySelector('[name="matric_number"]').value.trim();
+  const photo = document.getElementById("photo").files[0];
+  if (!name || !username || !email || !matric_number || !photo) return alert("All fields required");
+  const form = new FormData(); form.append("name", name); form.append("username", username); form.append("email", email); form.append("matric_number", matric_number); form.append("photo", photo);
+  info("Sending registration...");
+  try {
+    const res = await fetch(`${API_URL}/student`, { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok || !data.ok) { alert("Failed: "+(data.error||res.status)); info("Failed"); return; }
+    const student = data.student;
+    document.getElementById("student-panel").style.display = "block";
+    document.getElementById("profile-name").textContent = student.name;
+    document.getElementById("profile-matric").textContent = student.matric_number;
+    document.getElementById("profile-email").textContent = student.email;
+    document.getElementById("profile-photo").src = student.photo_url||'';
+    document.getElementById("profile-qr").src = student.qr_code_url||'';
+    if (student.qr_code_url) await fetchAndDownload(student.qr_code_url, `${student.name}_QR.png`);
+    info("Registration Complete!"); e.target.reset();
+  } catch(err){ alert("Registration error: "+err.message); info("Error"); }
+});
+
+// -------------------------------
+// Attendance helpers
+function getQueryParam(name) { try{ return new URL(window.location.href).searchParams.get(name); }catch{return null;} }
+function getSavedPin(){ try{ const pin=localStorage.getItem('lecturer_pin'); const date=localStorage.getItem('lecturer_pin_date'); if(!pin||!date)return null; return date===new Date().toISOString().slice(0,10)?pin:null; }catch{return null;} }
+function savePinForToday(pin){ try{ localStorage.setItem('lecturer_pin',pin); localStorage.setItem('lecturer_pin_date',new Date().toISOString().slice(0,10)); }catch{} }
+function saveLecturerName(name){ try{ localStorage.setItem('lecturer_name',name); }catch{} }
+
+async function postAttendance(studentId, lecturerName, courseCode, pin){
+  try {
+    const res = await fetch(`${API_URL}/attendance`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ student_id:studentId, lecturer:lecturerName||'Unknown', course:courseCode||'Unknown', admin_pin:pin })
+    });
+    return await res.json();
+  } catch(err){ return {ok:false,error:err.message}; }
+}
+
+function extractStudentIdFromScanned(text){
+  try{
+    const u = new URL(text);
+    return u.searchParams.get('id')||u.searchParams.get('student_id')||u.pathname.split('/').filter(Boolean).pop();
+  } catch(e){ return typeof text==='string'&&text.trim().length>5?text.trim():null; }
+}
+
+// -------------------------------
+// Show clean overlay for attendance
+async function showConfirmAndPost(studentId){
+  const overlay = document.createElement('div');
+  overlay.id='scan-overlay';
+  overlay.innerHTML=`
+    <div class="overlay-card">
+      <h3 style="text-align:center;color:#d4af37">Confirm Attendance</h3>
+      <p>Student ID: <strong>${studentId}</strong></p>
+      <input id="scan-lecturer" placeholder="Lecturer Name">
+      <input id="scan-course" placeholder="Course Code">
+      <input id="scan-pin" placeholder="Enter secret PIN" type="password">
+      <label style="display:flex;align-items:center;margin-top:8px;color:#ddd">
+        <input id="scan-remember" type="checkbox" style="margin-right:8px"> Remember for today
+      </label>
+      <div class="button-row">
+        <button id="scan-submit" style="background:#5c3a23;color:#fff;">Submit</button>
+        <button id="scan-cancel" style="background:#444;color:#fff;">Cancel</button>
+      </div>
+      <p id="scan-result" style="margin-top:12px;color:#ddd"></p>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  // Auto-fill saved values
+  const savedPin=getSavedPin(); if(savedPin){ document.getElementById('scan-pin').value=savedPin; document.getElementById('scan-remember').checked=true; }
+  const savedLecturer=localStorage.getItem('lecturer_name')||''; if(savedLecturer) document.getElementById('scan-lecturer').value=savedLecturer;
+
+  document.getElementById('scan-cancel').addEventListener('click',()=>{ overlay.remove(); });
+  document.getElementById('scan-submit').addEventListener('click',async ()=>{
+    const pin=document.getElementById('scan-pin').value.trim();
+    const lecturer=document.getElementById('scan-lecturer').value.trim();
+    const course=document.getElementById('scan-course').value.trim();
+    const remember=document.getElementById('scan-remember').checked;
+    const resultBox=document.getElementById('scan-result');
+    if(!pin){ resultBox.textContent='Please enter PIN.'; return; }
+    resultBox.textContent='Submitting attendance...';
+    const res=await postAttendance(studentId,lecturer,course,pin);
+    if(res.ok){
+      resultBox.textContent='✅ Attendance recorded.';
+      if(remember){ savePinForToday(pin); if(lecturer) saveLecturerName(lecturer); }
+      setTimeout(()=>{ overlay.remove(); },900);
+    } else { resultBox.textContent='Error: '+(res.error||'Failed to record attendance.'); }
+  });
+}
+
+// Auto-show overlay if URL has ?id=
+window.addEventListener('DOMContentLoaded',()=>{ const studentId=getQueryParam('id'); if(studentId) showConfirmAndPost(studentId); });
+
+// -------------------------------
+// Built-in scanner
+let html5QrScanner=null,scanning=false;
+const startBtn=document.getElementById('startScanner');
+const stopBtn=document.getElementById('stopScanner');
+
+function startScanner(){
+  if(scanning)return;
+  const reader=document.getElementById('reader'); reader.innerHTML='';
+  html5QrScanner=new Html5Qrcode("reader");
+  Html5Qrcode.getCameras().then(cameras=>{
+    if(!cameras||cameras.length===0){ setScanResult('No camera found',false); return; }
+    const back=cameras.find(c=>/back|rear|environment/i.test(c.label))||cameras[0];
+    html5QrScanner.start({deviceId:{exact:back.id}}, {fps:10,qrbox:{width:250,height:250}}, onScanSuccess, ()=>{} )
+    .then(()=>{ scanning=true; startBtn.style.display='none'; stopBtn.style.display='inline-block'; setScanResult('Scanner started'); })
+    .catch(err=>{ setScanResult('Could not start camera: '+err,false); });
+  }).catch(err=>{ setScanResult('Error getting cameras: '+err,false); });
+}
+
+function stopScanner(){ if(!scanning||!html5QrScanner)return; html5QrScanner.stop().then(()=>{ html5QrScanner.clear(); scanning=false; startBtn.style.display='inline-block'; stopBtn.style.display='none'; setScanResult('Scanner stopped'); }).catch(err=>{ setScanResult('Failed to stop scanner: '+err,false); }); }
+
+function onScanSuccess(decodedText){ stopScanner(); const studentId=extractStudentIdFromScanned(decodedText); if(!studentId){ setScanResult('Invalid student ID',false); setTimeout(()=>startScanner(),900); return; } setScanResult('Scanned Student ID: '+studentId); showConfirmAndPost(studentId); }
+
+startBtn?.addEventListener('click',startScanner);
+stopBtn?.addEventListener('click',stopScanner);
+
+document.getElementById('openUrl')?.addEventListener('click',()=>{ const url=document.getElementById('pasteUrl').value.trim(); if(!url) return alert('Paste URL'); try{ window.location.href=url; }catch(e){ alert('Invalid URL'); } });
+</script>
+</body>
+</html>
