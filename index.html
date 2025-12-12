@@ -22,6 +22,25 @@ button:hover{background:#7a4d2d}
 #scan-overlay .button-row{display:flex;gap:8px}
 #scan-overlay img{max-width:150px;border-radius:10px;border:2px solid #333;margin-bottom:10px}
 #regResult,#scanResult{margin-top:12px;padding:10px;background:#222;border-radius:6px;border:1px solid #333}
+
+
+.notice-box {
+  background: #111; 
+  border-left: 4px solid #d4af37;
+  padding: 14px 18px;
+  margin: 20px 0;
+  border-radius: 6px;
+  color: #ddd;
+  font-size: 17px;
+  line-height: 1.6;
+  box-shadow: 0 0 8px rgba(212,175,55,0.15);
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.notice-box strong {
+  color: #d4af37;
+}
+
 </style>
 </head>
 <body>
@@ -53,14 +72,23 @@ button:hover{background:#7a4d2d}
 <p class="small">The QR contains a link that opens the Scan page. Lecturers can use an external QR app or the built-in scanner.</p>
 </div>
 </section>
-
+  
 <!-- Lecturer Scanner -->
+
+<!--
 <section id="scanner">
 <h2>Lecturer Scanner</h2>
 <div id="reader"></div>
 <div id="scanResult"></div>
 <button id="startScanner">Start Scanner</button>
 <button id="stopScanner" style="display:none;">Stop Scanner</button>
+-->
+
+<div class="notice-box">
+  <p><strong>Important:</strong> Ensure you present your QRcodes to be scanned daily by the lecturer, to ensure your immediate attendance</p>
+</div>
+
+
 <input id="pasteUrl" placeholder="Paste Scan URL here">
 <button id="openUrl">Open Scan URL</button>
 </section>
