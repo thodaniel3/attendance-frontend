@@ -73,11 +73,6 @@ button:hover{background:#7a4d2d}
 </div>
 </section>
   
-
-
-
-
-
 <!-- Lecturer Scanner -->
 
 <!--
@@ -88,13 +83,6 @@ button:hover{background:#7a4d2d}
 <button id="startScanner">Start Scanner</button>
 <button id="stopScanner" style="display:none;">Stop Scanner</button>
 -->
-
-
-
-
-
-
-
 <div class="notice-box">
   <p><strong>Important:</strong> Ensure you present your QRcodes to be scanned daily by the lecturer, to ensure your immediate attendance</p>
 </div>
@@ -168,9 +156,6 @@ async function showConfirmAndPost(studentId){
   const overlay=document.createElement('div'); overlay.id='scan-overlay';
   overlay.innerHTML=`
   <div class="overlay-card">
-
-
-
     <img id="student-photo" src="" alt="Student Photo">
     <div id="student-name" style="margin-bottom:5px"></div>
     <div id="student-matric" style="margin-bottom:10px"></div>
@@ -181,13 +166,8 @@ async function showConfirmAndPost(studentId){
     <div class="button-row">
       <button id="scan-submit">Submit</button>
       <button id="scan-cancel">Cancel</button>
-     </div>
-    
-    
-    
-    
-    
-     <p id="scan-result"></p>
+    </div>
+    <p id="scan-result"></p>
   </div>`;
   document.body.appendChild(overlay);
 
