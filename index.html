@@ -113,7 +113,7 @@ button:hover{background:#7a4d2d}
 <script>
   
     function openScanner() {
-      window.location.href = "scanner.html";
+      window.location.href = "https://qr-code-mauve-one.vercel.app/";
     }
 const API_URL = "https://attendance-backend-6tmr.onrender.com/api";
 
@@ -162,33 +162,103 @@ document.getElementById('regForm')?.addEventListener('submit', async e=>{
 function saveToday(key,value){ try{ localStorage.setItem(key,value); localStorage.setItem(key+"_date",new Date().toISOString().slice(0,10)); }catch{} }
 function loadToday(key){ try{ const v=localStorage.getItem(key); const d=localStorage.getItem(key+"_date"); return (v&&d===new Date().toISOString().slice(0,10))?v:null; }catch{return null;} }
 
-// -------------------------------
+
+
+
+
+
+
+
+
+
+// ------------------------------- 
 // Attendance overlay
-async function showConfirmAndPost(studentId){
-  const overlay=document.createElement('div'); overlay.id='scan-overlay';
-  overlay.innerHTML=`
-  <div class="overlay-card">
+async function showConfirmAndPost(studentId) {
+  const overlay = document.createElement('div');
+  overlay.id = 'scan-overlay';
+  overlay.innerHTML = `
+    <div class="overlay-card">
+      <img id="student-photo" src="" alt="Student Photo">
+      <div id="student-name" style="margin-bottom:5px"></div>
+      <div id="student-matric" style="margin-bottom:10px"></div>
+      <input id="scan-lecturer" placeholder="Lecturer Name">
+      <input id="scan-course" placeholder="Course Code">
+      <input id="scan-pin" placeholder="Enter secret PIN" type="password">
+      <label><input id="scan-remember" type="checkbox"> Remember for today</label>
+      <div class="button-row">
+        <button id="scan-submit">Submit</button>
+        <button id="scan-cancel">Cancel</button>
+      </div>
+      <p id="scan-result"></p>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Reference the buttons
+  const submitButton = document.getElementById('scan-submit');
+  const cancelButton = document.getElementById('scan-cancel');
+
+  // Submit button click
+  submitButton.addEventListener('click', async function(e) {
+    e.preventDefault();
+
+    // 1️⃣ Run your programmed response
+    const lecturer = document.getElementById('scan-lecturer').value;
+    const course = document.getElementById('scan-course').value;
+    const pin = document.getElementById('scan-pin').value;
+    const remember = document.getElementById('scan-remember').checked;
+
+    // Example: post attendance
+    try {
+      const result = await postAttendance(studentId, lecturer, course, pin, remember);
+      document.getElementById('scan-result').textContent = result.message || "Submitted!";
+      
+      // Optional: small delay before redirect so user sees confirmation
+      setTimeout(() => {
+        window.location.href = 'scanner.html'; // redirect to scanner page
+      }, 800);
+
+    } catch(err) {
+      document.getElementById('scan-result').textContent = "Error submitting: " + err.message;
+    }
+  });
+
+  // Cancel button click
+  cancelButton.addEventListener('click', function() {
+    overlay.remove(); // close overlay
+  });
+}
+
+// Example async function for programmed response
+async function postAttendance(studentId, lecturer, course, pin, remember) {
+  // Replace this with actual API call / logic
+  console.log("Posting attendance for:", studentId, lecturer, course, pin, remember);
+  return new Promise(resolve => {
+    setTimeout(() => {
+      resolve({ success: true, message: "Attendance recorded!" });
+    }, 500);
+  });
+}
 
 
 
-    <img id="student-photo" src="" alt="Student Photo">
-    <div id="student-name" style="margin-bottom:5px"></div>
-    <div id="student-matric" style="margin-bottom:10px"></div>
-    <input id="scan-lecturer" placeholder="Lecturer Name">
-    <input id="scan-course" placeholder="Course Code">
-    <input id="scan-pin" placeholder="Enter secret PIN" type="password">
-    <label><input id="scan-remember" type="checkbox"> Remember for today</label>
-    <div class="button-row">
-      <button id="scan-submit">Submit</button>
-      <button id="scan-cancel">Cancel</button>
-     </div>
-    
-    
-    
-    
-    
-     <p id="scan-result"></p>
-  </div>`;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
   document.body.appendChild(overlay);
 
   // Fetch student data
