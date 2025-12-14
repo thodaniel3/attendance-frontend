@@ -1,0 +1,34 @@
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background-color: #121212; /* Dark background */
+  margin: 0;
+  padding: 2rem;
+  color: #fff;
+}
+
+h1 {
+  color: #ffcc00;
+}
+
+video {
+  width: 100%;
+  max-width: 400px;
+  border: 2px solid #ffcc00;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+#output {
+  margin-top: 1rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #ffcc00;
+}
+
+#scanner-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
