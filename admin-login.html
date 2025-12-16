@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lecturer Login</title>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f7f3f0; }
+    .card { max-width: 400px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
+    input { width: 100%; padding: 10px; margin-top: 10px; }
+    button { width: 100%; padding: 10px; background: brown; color: white; border: none; margin-top: 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h2>Lecturer Login</h2>
+  <input id="admin-email" type="email" placeholder="Admin Email (any placeholder)">
+  <input id="admin-secret" type="password" placeholder="Admin Secret Code">
+  <button onclick="login()">Login</button>
+</div>
+
+<script>
+const ADMIN_SECRET_KEY = 'admin_secret';
+function login(){
+  const email = document.getElementById('admin-email').value.trim();
+  const secret = document.getElementById('admin-secret').value.trim();
+  if(!email || !secret) return alert('Enter email & admin secret');
+
+  // Store in localStorage for frontend use
+  localStorage.setItem('admin_email', email);
+  localStorage.setItem(ADMIN_SECRET_KEY, secret);
+
+  alert('Login saved. Go to index.html to scan QR codes.');
+  window.location.href = 'index.html';
+}
+</script>
+</body>
+</html>

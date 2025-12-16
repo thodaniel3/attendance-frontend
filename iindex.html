@@ -175,106 +175,148 @@ function loadToday(key){ try{ const v=localStorage.getItem(key); const d=localSt
 
 
 
-/ -------------------------------
+
+// -------------------------------
 // Attendance overlay
 async function showConfirmAndPost(studentId){
-
-  const overlay=document.createElement('div');
-  overlay.id='scan-overlay';
-
+  const overlay=document.createElement('div'); overlay.id='scan-overlay';
   overlay.innerHTML=`
-    <div class="overlay-card">
-      <img id="student-photo">
-      <div id="student-name"></div>
-      <div id="student-matric"></div>
+  <div class="overlay-card">
 
-      <input id="scan-lecturer" placeholder="Lecturer Name">
-      <input id="scan-course" placeholder="Course Code">
-      <input id="scan-pin" type="password" placeholder="Admin PIN">
-      <label><input type="checkbox" id="scan-remember"> Remember today</label>
 
-      <div class="button-row">
-        <button id="scan-submit">Submit</button>
-        <button id="scan-cancel">Cancel</button>
-      </div>
-
-      <p id="scan-result"></p>
-    </div>
-  `;
-
+    <img id="student-photo" src="" alt="Student Photo">
+    <div id="student-name" style="margin-bottom:5px"></div>
+    <div id="student-matric" style="margin-bottom:10px"></div>
+    <input id="scan-lecturer" placeholder="Lecturer Name">
+    <input id="scan-course" placeholder="Course Code">
+    <input id="scan-pin" placeholder="Enter secret PIN" type="password">
+    <label><input id="scan-remember" type="checkbox"> Remember for today</label>
+    <div class="button-row">
+      <button id="scan-submit">Submit</button>
+      <button id="scan-cancel">Cancel</button>
+     </div>
+    
+    
+    
+    
+    
+     <p id="scan-result"></p>
+  </div>`;
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
   document.body.appendChild(overlay);
 
-  // Load student info
-  const res=await fetch(`${API_URL}/student/${studentId}`);
-  const data=await res.json();
-  if(data.ok){
-    document.getElementById('student-photo').src=data.student.photo_url||'';
-    document.getElementById('student-name').textContent="Name: "+data.student.name;
-    document.getElementById('student-matric').textContent="Matric: "+data.student.matric_number;
-  }
+  // Fetch student data
+  try{
+    const res=await fetch(`${API_URL}/student/${studentId}`);
+    const data=await res.json();
+    if(data.ok&&data.student){
+      document.getElementById('student-photo').src=data.student.photo_url||'';
+      document.getElementById('student-name').textContent="Name: "+data.student.name;
+      document.getElementById('student-matric').textContent="Matric: "+data.student.matric_number;
+    }
+  }catch(e){ console.warn("Failed to load student data",e); }
 
-  // Load remembered values
-  document.getElementById('scan-pin').value=loadToday('lecturer_pin')||'';
-  document.getElementById('scan-lecturer').value=loadToday('lecturer_name')||'';
-  document.getElementById('scan-course').value=loadToday('course_code')||'';
+  // Load saved Remember Me
+  const savedPin=loadToday('lecturer_pin'); if(savedPin) document.getElementById('scan-pin').value=savedPin;
+  const savedLecturer=loadToday('lecturer_name'); if(savedLecturer) document.getElementById('scan-lecturer').value=savedLecturer;
+  const savedCourse=loadToday('course_code'); if(savedCourse) document.getElementById('scan-course').value=savedCourse;
 
-  document.getElementById('scan-cancel').onclick=()=>overlay.remove();
-
-  // -------------------------------
-  // ✅ ONLY FIX IS HERE
-  document.getElementById('scan-submit').onclick=async ()=>{
-
+  document.getElementById('scan-cancel').addEventListener('click',()=>overlay.remove());
+  document.getElementById('scan-submit').addEventListener('click',async ()=>{
     const pin=document.getElementById('scan-pin').value.trim();
     const lecturer=document.getElementById('scan-lecturer').value.trim();
     const course=document.getElementById('scan-course').value.trim();
     const remember=document.getElementById('scan-remember').checked;
-    const result=document.getElementById('scan-result');
-
-    result.textContent="Submitting attendance...";
-
-    const r=await fetch(`${API_URL}/attendance`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        student_id:studentId,
-        lecturer,
-        course,
-        admin_pin:pin
-      })
-    });
-
-    const d=await r.json();
-
-    if(d.ok){
-      result.textContent="✅ Attendance recorded. Opening scanner...";
-
-      if(remember){
-        saveToday('lecturer_pin',pin);
-        saveToday('lecturer_name',lecturer);
-        saveToday('course_code',course);
-      }
-
-      // 🔥 REDIRECT TO SCANNER PAGE
-      setTimeout(()=>{
-        overlay.remove();
-        window.location.href="scanner.html";
-      },900);
-
-    }else{
-      result.textContent="❌ "+(d.error||"Failed");
-    }
-  };
+    const resultBox=document.getElementById('scan-result');
+    if(!pin){ resultBox.textContent='Please enter PIN.'; return; }
+    resultBox.textContent='Submitting attendance...';
+    try{
+      const res=await fetch(`${API_URL}/attendance`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({student_id:studentId,lecturer,course,admin_pin:pin})
+      });
+      const data=await res.json();
+      if(data.ok){
+        resultBox.textContent='✅ Attendance recorded.';
+        if(remember){
+          saveToday('lecturer_pin',pin);
+          saveToday('lecturer_name',lecturer);
+          saveToday('course_code',course);
+        }
+        setTimeout(()=>overlay.remove(),900);
+      } else { resultBox.textContent='Error: '+(data.error||'Failed to record attendance'); }
+    }catch(e){ resultBox.textContent='Error: '+e.message; }
+  });
 }
 
-// Auto-open overlay when QR contains ?id=
+// Auto-show overlay if URL has ?id=
 window.addEventListener('DOMContentLoaded',()=>{
-  const id=new URLSearchParams(window.location.search).get('id');
-  if(id) showConfirmAndPost(id);
+  const urlId=new URLSearchParams(window.location.search).get('id');
+  if(urlId) showConfirmAndPost(urlId);
 });
-</script>
 
-</body>
-</html>
+
+
+
+// -------------------------------
+// Built-in scanner
+//let html5QrScanner=null,scanning=false;
+//document.getElementById('startScanner')?.addEventListener('click', async ()=>{
+ // if(scanning) return;
+  //const reader=document.getElementById('reader'); reader.innerHTML='';
+//  html5QrScanner=new Html5Qrcode("reader");
+  //const cameras=await Html5Qrcode.getCameras();
+//  if(!cameras||cameras.length===0){ document.getElementById('scanResult').textContent='No camera found'; return; }
+  //const cam=cameras[0];
+//  html5QrScanner.start({deviceId:{exact:cam.id}},{fps:10,qrbox:{width:250,height:250}},text=>{ 
+ //   html5QrScanner.stop(); 
+   // const id=(new URL(text,new URL(window.location.href)).searchParams.get('id')||text);
+    //showConfirmAndPost(id);
+  //},err=>{});
+  //scanning=true; document.getElementById('startScanner').style.display='none';
+  //document.getElementById('stopScanner').style.display='inline-block';
+//});
+
+//document.getElementById('stopScanner')?.addEventListener('click',()=>{
+  //if(!scanning||!html5QrScanner) return;
+  //html5QrScanner.stop().then(()=>{ html5QrScanner.clear(); scanning=false; document.getElementById('startScanner').style.display='inline-block'; document.getElementById('stopScanner').style.display='none'; });
+//});
+//
+// Open scan URL manually
+
+
+
+
+
 
 // Open scan URL manually
 document.getElementById('openUrl')?.addEventListener('click',()=>{
@@ -284,4 +326,3 @@ document.getElementById('openUrl')?.addEventListener('click',()=>{
 </script>
 </body>
 </html>
-
