@@ -175,49 +175,104 @@ function loadToday(key){ try{ const v=localStorage.getItem(key); const d=localSt
 
 
 
-
 // -------------------------------
 // Attendance overlay
 async function showConfirmAndPost(studentId){
-  const overlay=document.createElement('div'); overlay.id='scan-overlay';
+
+  const overlay=document.createElement('div');
+  overlay.id='scan-overlay';
+
   overlay.innerHTML=`
-  <div class="overlay-card">
+    <div class="overlay-card">
+      <img id="student-photo">
+      <div id="student-name"></div>
+      <div id="student-matric"></div>
+
+      <input id="scan-lecturer" placeholder="Lecturer Name">
+      <input id="scan-course" placeholder="Course Code">
+      <input id="scan-pin" type="password" placeholder="Admin PIN">
+      <label><input type="checkbox" id="scan-remember"> Remember today</label>
+
+      <div class="button-row">
+        <button id="scan-submit">Submit</button>
+        <button id="scan-cancel">Cancel</button>
+      </div>
+
+      <p id="scan-result"></p>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Load student info
+  const res=await fetch(`${API_URL}/student/${studentId}`);
+  const data=await res.json();
+  if(data.ok){
+    document.getElementById('student-photo').src=data.student.photo_url||'';
+    document.getElementById('student-name').textContent="Name: "+data.student.name;
+    document.getElementById('student-matric').textContent="Matric: "+data.student.matric_number;
+  }
+
+  // Load remembered values
+  document.getElementById('scan-pin').value=loadToday('lecturer_pin')||'';
+  document.getElementById('scan-lecturer').value=loadToday('lecturer_name')||'';
+  document.getElementById('scan-course').value=loadToday('course_code')||'';
+
+  document.getElementById('scan-cancel').onclick=()=>overlay.remove();
+
+  // -------------------------------
+  // ✅ ONLY FIX IS HERE
+  document.getElementById('scan-submit').onclick=async ()=>{
+
+    const pin=document.getElementById('scan-pin').value.trim();
+    const lecturer=document.getElementById('scan-lecturer').value.trim();
+    const course=document.getElementById('scan-course').value.trim();
+    const remember=document.getElementById('scan-remember').checked;
+    const result=document.getElementById('scan-result');
+
+    result.textContent="Submitting attendance...";
+
+    const r=await fetch(`${API_URL}/attendance`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        student_id:studentId,
+        lecturer,
+        course,
+        admin_pin:pin
+      })
+    });
+
+    const d=await r.json();
+
+    if(d.ok){
+      result.textContent="✅ Attendance recorded. Opening scanner...";
+
+      if(remember){
+        saveToday('lecturer_pin',pin);
+        saveToday('lecturer_name',lecturer);
+        saveToday('course_code',course);
+      }
+
+      // 🔥 REDIRECT TO SCANNER PAGE
+      setTimeout(()=>{
+        overlay.remove();
+        window.location.href="scanner.html";
+      },900);
+
+    }else{
+      result.textContent="❌ "+(d.error||"Failed");
+    }
+  };
+}
+
+// Auto-open overlay when QR contains ?id=
+window.addEventListener('DOMContentLoaded',()=>{
+  const id=new URLSearchParams(window.location.search).get('id');
+  if(id) showConfirmAndPost(id);
+});
 
 
-    <img id="student-photo" src="" alt="Student Photo">
-    <div id="student-name" style="margin-bottom:5px"></div>
-    <div id="student-matric" style="margin-bottom:10px"></div>
-    <input id="scan-lecturer" placeholder="Lecturer Name">
-    <input id="scan-course" placeholder="Course Code">
-    <input id="scan-pin" placeholder="Enter secret PIN" type="password">
-    <label><input id="scan-remember" type="checkbox"> Remember for today</label>
-    <div class="button-row">
-      <button id="scan-submit">Submit</button>
-      <button id="scan-cancel">Cancel</button>
-     </div>
-    
-    
-    
-    
-    
-     <p id="scan-result"></p>
-  </div>`;
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
  
  
  
