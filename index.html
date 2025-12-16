@@ -5,380 +5,152 @@
 <title>MME Attendance Management System</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <script src="https://unpkg.com/html5-qrcode@2.3.9/minified/html5-qrcode.min.js"></script>
+
 <style>
 body{font-family:Arial,sans-serif;background:#000;color:#f5f5f5;margin:0;padding:0}
 h1,h2,h3{text-align:center;margin-top:20px;color:#d4af37;font-weight:bold}
 .container{max-width:900px;margin:0 auto;padding:20px}
 section{background:#111;padding:20px;border-radius:10px;margin-bottom:25px;border:1px solid #333;box-shadow:0 0 10px rgba(212,175,55,0.15)}
-input,button,select{width:95%;padding:12px;margin-top:10px;margin-bottom:10px;border-radius:6px;border:none;font-size:16px}
+input,button{width:95%;padding:12px;margin-top:10px;margin-bottom:10px;border-radius:6px;border:none;font-size:16px}
 input{background:#222;color:#ddd;border:1px solid #444}
-button{background:#5c3a23;color:white;cursor:pointer;font-weight:bold;transition:0.3s ease}
+button{background:#5c3a23;color:white;cursor:pointer;font-weight:bold}
 button:hover{background:#7a4d2d}
-#reader{width:320px;max-width:100%;background:#000;border-radius:8px;padding:6px;border:1px solid #333}
-#scan-overlay{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:15px}
-#scan-overlay .overlay-card{max-width:420px;width:100%;background:#111;padding:18px;border-radius:10px;border:1px solid #333;color:#fff;text-align:center}
-#scan-overlay input{background:#222;color:#ddd;border:1px solid #444;padding:10px;margin-top:8px;border-radius:6px;width:100%}
-#scan-overlay button{flex:1;padding:10px;border-radius:6px;border:none;margin-top:10px}
-#scan-overlay .button-row{display:flex;gap:8px}
+#scan-overlay{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center}
+#scan-overlay .overlay-card{background:#111;padding:18px;border-radius:10px;border:1px solid #333;text-align:center;width:100%;max-width:420px}
 #scan-overlay img{max-width:150px;border-radius:10px;border:2px solid #333;margin-bottom:10px}
-#regResult,#scanResult{margin-top:12px;padding:10px;background:#222;border-radius:6px;border:1px solid #333}
-
-
-.notice-box {
-  background: #111; 
-  border-left: 4px solid #d4af37;
-  padding: 14px 18px;
-  margin: 20px 0;
-  border-radius: 6px;
-  color: #ddd;
-  font-size: 17px;
-  line-height: 1.6;
-  box-shadow: 0 0 8px rgba(212,175,55,0.15);
-  font-family: "Segoe UI", Arial, sans-serif;
-}
-
-.notice-box strong {
-  color: #d4af37;
-}
-
+#scan-overlay input{width:100%;padding:10px;border-radius:6px;margin-top:8px}
+.button-row{display:flex;gap:10px}
+.notice-box{background:#111;border-left:4px solid #d4af37;padding:14px;margin:20px 0;border-radius:6px}
 </style>
 </head>
+
 <body>
 
 <h1>MME Attendance Management System</h1>
+
 <div class="container">
 
-<!-- Student Registration -->
 <section id="register">
 <h2>Student Registration</h2>
+
 <form id="regForm" enctype="multipart/form-data">
 <input name="name" placeholder="Full Name" required>
 <input name="username" placeholder="Username" required>
 <input name="email" type="email" placeholder="Email" required>
 <input name="matric_number" placeholder="Matric Number" required>
-<label>Upload Passport Photograph:</label>
 <input id="photo" name="photo" type="file" accept="image/*" required>
 <button type="submit">Register & Download QR</button>
 </form>
+
 <div id="regResult"></div>
-<div id="student-panel" style="display:none;">
-<h3>Student Profile</h3>
-<img id="profile-photo" style="max-width:150px;">
+
+<div id="student-panel" style="display:none">
+<img id="profile-photo">
 <div>Name: <span id="profile-name"></span></div>
 <div>Matric: <span id="profile-matric"></span></div>
 <div>Email: <span id="profile-email"></span></div>
-<h3>QR Code</h3>
-<img id="profile-qr" style="max-width:200px;">
-<p class="small">The QR contains a link that opens the Scan page. Lecturers can use an external QR app or the built-in scanner.</p>
+<img id="profile-qr">
 </div>
 </section>
-  
-
-
-
-
-
-<!-- Lecturer Scanner -->
-
-<!--
-<section id="scanner">
-<h2>Lecturer Scanner</h2>
-<div id="reader"></div>
-<div id="scanResult"></div>
-<button id="startScanner">Start Scanner</button>
-<button id="stopScanner" style="display:none;">Stop Scanner</button>
--->
-
-
-
-
-
-
 
 <div class="notice-box">
-  <p><strong>Important:</strong> Ensure you present your QRcodes to be scanned daily by the lecturer, to ensure your immediate attendance</p>
+<strong>Important:</strong> Present QR code daily for attendance
 </div>
 
-
-  <h1>Welcome to QR Scanner App</h1>
-  <button onclick="openScanner()">Open Scanner</button>
-
-
-<input id="pasteUrl" placeholder="Paste Scan URL here">
-<button id="openUrl">Open Scan URL</button>
-</section>
+<h2>QR Scanner</h2>
+<button onclick="window.location.href='scanner.html'">Open Scanner</button>
 
 </div>
 
 <script>
-  
-    function openScanner() {
-      window.location.href = "scanner.html";
-    }
+const API_URL="https://attendance-backend-6tmr.onrender.com/api";
 
-    
-const API_URL = "https://attendance-backend-6tmr.onrender.com/api";
-
-// -------------------------------
-// Registration
-document.getElementById('regForm')?.addEventListener('submit', async e=>{
-  e.preventDefault();
-  const name=document.querySelector('[name="name"]').value.trim();
-  const username=document.querySelector('[name="username"]').value.trim();
-  const email=document.querySelector('[name="email"]').value.trim();
-  const matric_number=document.querySelector('[name="matric_number"]').value.trim();
-  const photo=document.getElementById('photo').files[0];
-  if(!name||!username||!email||!matric_number||!photo)return alert("All fields required");
-  const form=new FormData(); 
-  form.append("name",name); form.append("username",username); 
-  form.append("email",email); form.append("matric_number",matric_number); 
-  form.append("photo",photo);
-  document.getElementById('regResult').textContent="Registering...";
-  try{
-    const res=await fetch(`${API_URL}/student`,{method:"POST",body:form});
-    const data=await res.json();
-    if(!res.ok||!data.ok){ alert("Failed: "+(data.error||res.status)); return; }
-    const s=data.student;
-    document.getElementById("student-panel").style.display="block";
-    document.getElementById("profile-name").textContent=s.name;
-    document.getElementById("profile-matric").textContent=s.matric_number;
-    document.getElementById("profile-email").textContent=s.email;
-    document.getElementById("profile-photo").src=s.photo_url||'';
-    document.getElementById("profile-qr").src=s.qr_code_url||'';
-    // Auto-download QR
-    if(s.qr_code_url){ 
-      const r=await fetch(s.qr_code_url); 
-      const b=await r.blob(); 
-      const u=URL.createObjectURL(b); 
-      const a=document.createElement("a"); 
-      a.href=u; a.download=`${s.name}_QR.png`; 
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(u); 
-    }
-    document.getElementById('regResult').textContent="Registration Complete!";
-    e.target.reset();
-  }catch(err){ alert("Registration error: "+err.message); }
+// REGISTRATION
+document.getElementById("regForm").addEventListener("submit",async e=>{
+e.preventDefault();
+const form=new FormData(e.target);
+const res=await fetch(API_URL+"/student",{method:"POST",body:form});
+const data=await res.json();
+if(!data.ok){alert("Registration failed");return;}
+document.getElementById("student-panel").style.display="block";
+document.getElementById("profile-name").textContent=data.student.name;
+document.getElementById("profile-matric").textContent=data.student.matric_number;
+document.getElementById("profile-email").textContent=data.student.email;
+document.getElementById("profile-photo").src=data.student.photo_url;
+document.getElementById("profile-qr").src=data.student.qr_code_url;
 });
 
-// -------------------------------
-// Remember Me helpers
-function saveToday(key,value){ try{ localStorage.setItem(key,value); localStorage.setItem(key+"_date",new Date().toISOString().slice(0,10)); }catch{} }
-function loadToday(key){ try{ const v=localStorage.getItem(key); const d=localStorage.getItem(key+"_date"); return (v&&d===new Date().toISOString().slice(0,10))?v:null; }catch{return null;} }
+// REMEMBER HELPERS
+function saveToday(k,v){localStorage.setItem(k,v);localStorage.setItem(k+"_date",new Date().toISOString().slice(0,10))}
+function loadToday(k){return localStorage.getItem(k+"_date")==new Date().toISOString().slice(0,10)?localStorage.getItem(k):null}
 
-
-
-
-
-
-
-
-
-
-
-
-// -------------------------------
-// Attendance overlay
+// ATTENDANCE OVERLAY
 async function showConfirmAndPost(studentId){
+const overlay=document.createElement("div");
+overlay.id="scan-overlay";
+overlay.innerHTML=`
+<div class="overlay-card">
+<img id="student-photo">
+<div id="student-name"></div>
+<div id="student-matric"></div>
+<input id="scan-lecturer" placeholder="Lecturer Name">
+<input id="scan-course" placeholder="Course Code">
+<input id="scan-pin" placeholder="PIN" type="password">
+<label><input id="scan-remember" type="checkbox"> Remember today</label>
+<div class="button-row">
+<button id="scan-submit">Submit</button>
+<button id="scan-cancel">Cancel</button>
+</div>
+<p id="scan-result"></p>
+</div>`;
+document.body.appendChild(overlay);
 
-  const overlay=document.createElement('div');
-  overlay.id='scan-overlay';
+const r=await fetch(API_URL+"/student/"+studentId);
+const s=(await r.json()).student;
+document.getElementById("student-photo").src=s.photo_url;
+document.getElementById("student-name").textContent=s.name;
+document.getElementById("student-matric").textContent=s.matric_number;
 
-  overlay.innerHTML=`
-    <div class="overlay-card">
-      <img id="student-photo">
-      <div id="student-name"></div>
-      <div id="student-matric"></div>
+document.getElementById("scan-cancel").onclick=()=>overlay.remove();
 
-      <input id="scan-lecturer" placeholder="Lecturer Name">
-      <input id="scan-course" placeholder="Course Code">
-      <input id="scan-pin" type="password" placeholder="Admin PIN">
-      <label><input type="checkbox" id="scan-remember"> Remember today</label>
+document.getElementById("scan-submit").onclick=async()=>{
+const pin=document.getElementById("scan-pin").value;
+const lecturer=document.getElementById("scan-lecturer").value;
+const course=document.getElementById("scan-course").value;
+const remember=document.getElementById("scan-remember").checked;
 
-      <div class="button-row">
-        <button id="scan-submit">Submit</button>
-        <button id="scan-cancel">Cancel</button>
-      </div>
+const res=await fetch(API_URL+"/attendance",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({student_id:studentId,lecturer,course,admin_pin:pin})
+});
+const data=await res.json();
 
-      <p id="scan-result"></p>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
-
-  // Load student info
-  const res=await fetch(`${API_URL}/student/${studentId}`);
-  const data=await res.json();
-  if(data.ok){
-    document.getElementById('student-photo').src=data.student.photo_url||'';
-    document.getElementById('student-name').textContent="Name: "+data.student.name;
-    document.getElementById('student-matric').textContent="Matric: "+data.student.matric_number;
-  }
-
-  // Load remembered values
-  document.getElementById('scan-pin').value=loadToday('lecturer_pin')||'';
-  document.getElementById('scan-lecturer').value=loadToday('lecturer_name')||'';
-  document.getElementById('scan-course').value=loadToday('course_code')||'';
-
-  document.getElementById('scan-cancel').onclick=()=>overlay.remove();
-
-  // -------------------------------
-  // ✅ ONLY FIX IS HERE
-  document.getElementById('scan-submit').onclick=async ()=>{
-
-    const pin=document.getElementById('scan-pin').value.trim();
-    const lecturer=document.getElementById('scan-lecturer').value.trim();
-    const course=document.getElementById('scan-course').value.trim();
-    const remember=document.getElementById('scan-remember').checked;
-    const result=document.getElementById('scan-result');
-
-    result.textContent="Submitting attendance...";
-
-    const r=await fetch(`${API_URL}/attendance`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        student_id:studentId,
-        lecturer,
-        course,
-        admin_pin:pin
-      })
-    });
-
-    const d=await r.json();
-
-    if(d.ok){
-      result.textContent="✅ Attendance recorded. Opening scanner...";
-
-      if(remember){
-        saveToday('lecturer_pin',pin);
-        saveToday('lecturer_name',lecturer);
-        saveToday('course_code',course);
-      }
-
-      // 🔥 REDIRECT TO SCANNER PAGE
-      setTimeout(()=>{
-        overlay.remove();
-        window.location.href="scanner.html";
-      },900);
-
-    }else{
-      result.textContent="❌ "+(d.error||"Failed");
-    }
-  };
+if(data.ok){
+document.getElementById("scan-result").textContent="✅ Attendance recorded";
+if(remember){
+saveToday("lecturer_pin",pin);
+saveToday("lecturer_name",lecturer);
+saveToday("course_code",course);
 }
 
-// Auto-open overlay when QR contains ?id=
-window.addEventListener('DOMContentLoaded',()=>{
-  const id=new URLSearchParams(window.location.search).get('id');
-  if(id) showConfirmAndPost(id);
-});
+/* ✅ ONLY FIX — REDIRECT TO SCANNER */
+setTimeout(()=>{
+overlay.remove();
+window.location.href="scanner.html";
+},900);
 
-
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
-  document.body.appendChild(overlay);
-
-  // Fetch student data
-  try{
-    const res=await fetch(`${API_URL}/student/${studentId}`);
-    const data=await res.json();
-    if(data.ok&&data.student){
-      document.getElementById('student-photo').src=data.student.photo_url||'';
-      document.getElementById('student-name').textContent="Name: "+data.student.name;
-      document.getElementById('student-matric').textContent="Matric: "+data.student.matric_number;
-    }
-  }catch(e){ console.warn("Failed to load student data",e); }
-
-  // Load saved Remember Me
-  const savedPin=loadToday('lecturer_pin'); if(savedPin) document.getElementById('scan-pin').value=savedPin;
-  const savedLecturer=loadToday('lecturer_name'); if(savedLecturer) document.getElementById('scan-lecturer').value=savedLecturer;
-  const savedCourse=loadToday('course_code'); if(savedCourse) document.getElementById('scan-course').value=savedCourse;
-
-  document.getElementById('scan-cancel').addEventListener('click',()=>overlay.remove());
-  document.getElementById('scan-submit').addEventListener('click',async ()=>{
-    const pin=document.getElementById('scan-pin').value.trim();
-    const lecturer=document.getElementById('scan-lecturer').value.trim();
-    const course=document.getElementById('scan-course').value.trim();
-    const remember=document.getElementById('scan-remember').checked;
-    const resultBox=document.getElementById('scan-result');
-    if(!pin){ resultBox.textContent='Please enter PIN.'; return; }
-    resultBox.textContent='Submitting attendance...';
-    try{
-      const res=await fetch(`${API_URL}/attendance`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({student_id:studentId,lecturer,course,admin_pin:pin})
-      });
-      const data=await res.json();
-      if(data.ok){
-        resultBox.textContent='✅ Attendance recorded.';
-        if(remember){
-          saveToday('lecturer_pin',pin);
-          saveToday('lecturer_name',lecturer);
-          saveToday('course_code',course);
-        }
-        setTimeout(()=>overlay.remove(),900);
-      } else { resultBox.textContent='Error: '+(data.error||'Failed to record attendance'); }
-    }catch(e){ resultBox.textContent='Error: '+e.message; }
-  });
+}else{
+document.getElementById("scan-result").textContent=data.error;
+}
+};
 }
 
-// Auto-show overlay if URL has ?id=
-window.addEventListener('DOMContentLoaded',()=>{
-  const urlId=new URLSearchParams(window.location.search).get('id');
-  if(urlId) showConfirmAndPost(urlId);
-});
-
-
-
-
-// -------------------------------
-// Built-in scanner
-//let html5QrScanner=null,scanning=false;
-//document.getElementById('startScanner')?.addEventListener('click', async ()=>{
- // if(scanning) return;
-  //const reader=document.getElementById('reader'); reader.innerHTML='';
-//  html5QrScanner=new Html5Qrcode("reader");
-  //const cameras=await Html5Qrcode.getCameras();
-//  if(!cameras||cameras.length===0){ document.getElementById('scanResult').textContent='No camera found'; return; }
-  //const cam=cameras[0];
-//  html5QrScanner.start({deviceId:{exact:cam.id}},{fps:10,qrbox:{width:250,height:250}},text=>{ 
- //   html5QrScanner.stop(); 
-   // const id=(new URL(text,new URL(window.location.href)).searchParams.get('id')||text);
-    //showConfirmAndPost(id);
-  //},err=>{});
-  //scanning=true; document.getElementById('startScanner').style.display='none';
-  //document.getElementById('stopScanner').style.display='inline-block';
-//});
-
-//document.getElementById('stopScanner')?.addEventListener('click',()=>{
-  //if(!scanning||!html5QrScanner) return;
-  //html5QrScanner.stop().then(()=>{ html5QrScanner.clear(); scanning=false; document.getElementById('startScanner').style.display='inline-block'; document.getElementById('stopScanner').style.display='none'; });
-//});
-//
-// Open scan URL manually
-
-
-
-
-
-
-// Open scan URL manually
-document.getElementById('openUrl')?.addEventListener('click',()=>{
-  const u=document.getElementById('pasteUrl').value.trim();
-  if(u) window.location.href=u;
+window.addEventListener("DOMContentLoaded",()=>{
+const id=new URLSearchParams(window.location.search).get("id");
+if(id) showConfirmAndPost(id);
 });
 </script>
+
 </body>
 </html>
-
