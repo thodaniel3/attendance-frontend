@@ -281,15 +281,6 @@ async function showConfirmAndPost(studentId){
   });
 }
 
-  setTimeout(()=>{
-    overlay.remove();
-    window.location.href = "scanner.html";
-  },900);
-
-} else {
-  resultBox.textContent='Error: '+(data.error||'Failed to record attendance');
-}
-
 // Auto-show overlay if URL has ?id=
 window.addEventListener('DOMContentLoaded',()=>{
   const urlId=new URLSearchParams(window.location.search).get('id');
