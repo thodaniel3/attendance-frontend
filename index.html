@@ -275,6 +275,11 @@ async function showConfirmAndPost(studentId){
 
 
 
+        setTimeout(()=>overlay.remove() ,900);
+      } else { resultBox.textContent='Error: '+(data.error||'Failed to record attendance'); }
+    }catch(e){ resultBox.textContent='Error: '+e.message; }
+  });
+}
 
   setTimeout(()=>{
     overlay.remove();
@@ -284,15 +289,6 @@ async function showConfirmAndPost(studentId){
 } else {
   resultBox.textContent='Error: '+(data.error||'Failed to record attendance');
 }
-
-
-
-
-
-
-
-
-
 
 // Auto-show overlay if URL has ?id=
 window.addEventListener('DOMContentLoaded',()=>{
